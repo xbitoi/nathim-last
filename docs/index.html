@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>نور — Yazaki AI Table Reader</title>
+  <meta name="description" content="وكيل ذكاء اصطناعي على واتساب يحوّل الفوضى البصرية لمخططات الأسلاك الكهربائية إلى تنظيم رقمي. Turning Visual Chaos into Digital Order." />
+  <meta property="og:title" content="نور — Yazaki AI Table Reader" />
+  <meta property="og:description" content="يحوّل الفوضى البصرية إلى تنظيم رقمي | Turning Visual Chaos into Digital Order" />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --primary-glow: rgba(16,185,129,0.15);
+      --bg: #0a0f1e;
+      --bg2: #0d1526;
+      --bg3: #111827;
+      --border: rgba(255,255,255,0.07);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --card: rgba(255,255,255,0.03);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; width: 100%; z-index: 100;
+      background: rgba(10,15,30,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px;
+    }
+    .nav-brand { font-size: 1.2rem; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; }
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 100px 2rem 4rem;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(16,185,129,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--primary-glow); border: 1px solid rgba(16,185,129,0.3);
+      color: var(--primary); padding: 0.35rem 1rem; border-radius: 999px;
+      font-size: 0.8rem; font-weight: 600; margin-bottom: 2rem;
+      letter-spacing: 0.05em;
+    }
+    .hero-badge span { width: 6px; height: 6px; background: var(--primary); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 7vw, 5rem);
+      font-weight: 700; line-height: 1.1;
+      background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+    .hero h1 em { font-style: normal; }
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.3rem);
+      color: var(--text-muted); margin-bottom: 1rem; font-weight: 300;
+    }
+    .hero-slogan {
+      font-size: clamp(1.1rem, 3vw, 1.6rem);
+      font-weight: 600; color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+    .hero-slogan-en {
+      font-size: clamp(0.85rem, 2vw, 1.1rem);
+      color: var(--text-muted); margin-bottom: 3rem; font-style: italic;
+    }
+    .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 5rem; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 1.75rem; border-radius: 10px;
+      font-size: 0.95rem; font-weight: 600; text-decoration: none;
+      transition: all 0.25s; cursor: pointer; border: none;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16,185,129,0.35); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-2px); }
+
+    /* ── STATS ── */
+    .stats {
+      display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center;
+      padding: 3rem 2rem;
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .stat { text-align: center; min-width: 140px; }
+    .stat-number { font-size: 2.5rem; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* ── SECTIONS ── */
+    section { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-tag { color: var(--primary); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.75rem; }
+    .section-title { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700; margin-bottom: 1rem; }
+    .section-sub { color: var(--text-muted); font-size: 1rem; max-width: 600px; }
+
+    /* ── PROBLEM / SOLUTION ── */
+    .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+    .role-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.75rem;
+      transition: border-color 0.25s, transform 0.25s;
+    }
+    .role-card:hover { border-color: var(--primary); transform: translateY(-4px); }
+    .role-icon { font-size: 2rem; margin-bottom: 1rem; }
+    .role-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .role-problem { color: #f87171; font-size: 0.85rem; margin-bottom: 0.75rem; padding: 0.6rem 0.9rem; background: rgba(248,113,113,0.08); border-radius: 8px; border-right: 3px solid #f87171; }
+    .role-solution { color: var(--primary); font-size: 0.85rem; padding: 0.6rem 0.9rem; background: rgba(16,185,129,0.08); border-radius: 8px; border-right: 3px solid var(--primary); }
+    .role-problem strong, .role-solution strong { display: block; font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 0.25rem; opacity: 0.8; }
+
+    /* ── FEATURES ── */
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 3rem; }
+    .feature {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.5rem;
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .feature-icon { font-size: 1.5rem; }
+    .feature-title { font-size: 0.95rem; font-weight: 600; }
+    .feature-desc { font-size: 0.83rem; color: var(--text-muted); }
+
+    /* ── TECH ── */
+    .tech-section { background: var(--bg2); }
+    .tech-section-inner { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .tech-tags { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
+    .tech-tag {
+      padding: 0.4rem 0.9rem; border-radius: 999px;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+      font-size: 0.82rem; color: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .tech-tag:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── CTA BANNER ── */
+    .cta-banner {
+      margin: 3rem 2rem; border-radius: 20px;
+      background: linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.06) 100%);
+      border: 1px solid rgba(16,185,129,0.2);
+      padding: 4rem 2rem; text-align: center;
+    }
+    .cta-banner h2 { font-size: clamp(1.4rem, 4vw, 2rem); font-weight: 700; margin-bottom: 0.75rem; }
+    .cta-banner p { color: var(--text-muted); margin-bottom: 2rem; max-width: 500px; margin-inline: auto; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border); padding: 2rem;
+      text-align: center; color: var(--text-muted); font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .hero-cta { flex-direction: column; align-items: center; }
+      .stats { gap: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <span class="nav-brand">نور ✦ Nour</span>
+    <div class="nav-links">
+      <a href="#roles">الفئات</a>
+      <a href="#features">المزايا</a>
+      <a href="#tech">التقنيات</a>
+      <a href="https://github.com/xbitoi/nour-agent">GitHub</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge"><span></span> Yazaki AI Table Reader — نور</div>
+    <h1>وكيل ذكاء اصطناعي<br/>لخطوط الإنتاج</h1>
+    <p class="hero-sub">WhatsApp AI Agent · مشروع Yazaki AI</p>
+    <p class="hero-slogan">يحوّل الفوضى البصرية إلى تنظيم رقمي</p>
+    <p class="hero-slogan-en">Turning Visual Chaos into Digital Order</p>
+    <div class="hero-cta">
+      <a href="https://github.com/xbitoi/nour-agent" class="btn btn-primary">
+        ⬡ عرض الكود على GitHub
+      </a>
+      <a href="#roles" class="btn btn-outline">اكتشف المشروع ↓</a>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="stat-number">0</div><div class="stat-label">خطأ بشري في الإدخال</div></div>
+    <div class="stat"><div class="stat-number">4</div><div class="stat-label">فئات مستهدفة</div></div>
+    <div class="stat"><div class="stat-number">∞</div><div class="stat-label">قابل للتوسع</div></div>
+    <div class="stat"><div class="stat-number">24/7</div><div class="stat-label">نور في استماع دائم</div></div>
+  </div>
+
+  <!-- ROLES -->
+  <section id="roles">
+    <p class="section-tag">المشكلة والحل</p>
+    <h2 class="section-title">من يستفيد من نور؟</h2>
+    <p class="section-sub">النسخة الحالية مُطبَّقة على مجموعة Monobloc XJX — نموذج جاهز للتوسع لباقي المجموعات</p>
+
+    <div class="roles">
+      <div class="role-card">
+        <div class="role-icon">🔧</div>
+        <div class="role-title">العمال</div>
+        <div class="role-problem"><strong>المشكلة</strong> أوراق DAD/DAG مبعثرة، خانات صغيرة وغير واضحة، أحياناً لا تُوجد الورقة أصلاً</div>
+        <div class="role-solution"><strong>الحل</strong> يقرأ العامل مخططات (شيمة) الأسلاك بسرعة وبوضوح تام داخل التطبيق — لا بحث، لا ورق، لا قراءة خاطئة</div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-icon">📦</div>
+        <div class="role-title">الموزعون</div>
+        <div class="role-problem"><strong>المشكلة</strong> أسلاك متشابهة في اللون مختلفة في الطول، صعوبة تحديد أي محطة تحتاج أي سلك</div>
+        <div class="role-solution"><strong>الحل</strong> رؤية رقمية واضحة لكل سلك وموقعه ومحطته المخصصة مع تمييز دقيق بين الأسلاك المتشابهة</div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-icon">✅</div>
+        <div class="role-title">فريق الجودة</div>
+        <div class="role-problem"><strong>المشكلة</strong> أكوام أوراق كبيرة، صعوبة قراءتها، كثرتها وتبعثرها والخلط بينها</div>
+        <div class="role-solution"><strong>الحل</strong> كل البيانات في شاشة واحدة واضحة منظمة قابلة للمراجعة الفورية دون ورقة واحدة</div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-icon">⚙️</div>
+        <div class="role-title">المهندسون</div>
+        <div class="role-problem"><strong>التحدي</strong> تحويل مخططات (شيمة) ورقية إلى بيانات رقمية دقيقة قابلة للاستخدام الفوري</div>
+        <div class="role-solution"><strong>الحل</strong> رفع صورة الجدول الورقي واستخراج البيانات تلقائياً بالذكاء الاصطناعي بدقة عالية</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <p class="section-tag">المزايا</p>
+    <h2 class="section-title">ماذا يفعل نور؟</h2>
+
+    <div class="features-grid">
+      <div class="feature">
+        <div class="feature-icon">💬</div>
+        <div class="feature-title">واتساب AI Agent</div>
+        <div class="feature-desc">وكيل ذكاء اصطناعي يرد على رسائل واتساب بالعربية والإنجليزية يمثل المشروع باحترافية</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🧠</div>
+        <div class="feature-title">Gemini + Groq</div>
+        <div class="feature-desc">سلسلة نماذج ذكية: Gemini 2.0 Flash ← Groq Llama 3.3 ← رسالة ثابتة — لا صمت أبداً</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔐</div>
+        <div class="feature-title">نظام مشرف</div>
+        <div class="feature-desc">مشرف واحد فقط بكلمة سر، أوامر واتساب لإدارة الشخصية والصيانة والمراقبة</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">لوحة تحكم</div>
+        <div class="feature-desc">واجهة ويب كاملة لمراقبة الرسائل والجهات والإحصائيات في الوقت الفعلي</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">♾️</div>
+        <div class="feature-title">استماع دائم</div>
+        <div class="feature-desc">Heartbeat كل 30 ثانية، Exponential backoff، معالجة رسائل الانقطاع — نور لا ينام</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🏭</div>
+        <div class="feature-title">Industry 4.0</div>
+        <div class="feature-desc">التحول الرقمي للمصنع — من مخططات ورقية إلى بيانات في الوقت الفعلي</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH STACK -->
+  <div class="tech-section" id="tech">
+    <div class="tech-section-inner">
+      <p class="section-tag">التقنيات</p>
+      <h2 class="section-title">مبني على أحدث التقنيات</h2>
+      <div class="tech-tags">
+        <span class="tech-tag">Node.js + TypeScript</span>
+        <span class="tech-tag">Baileys (WhatsApp)</span>
+        <span class="tech-tag">Google Gemini API</span>
+        <span class="tech-tag">Groq API</span>
+        <span class="tech-tag">React + Vite</span>
+        <span class="tech-tag">PostgreSQL</span>
+        <span class="tech-tag">Drizzle ORM</span>
+        <span class="tech-tag">Fastify</span>
+        <span class="tech-tag">pnpm Monorepo</span>
+        <span class="tech-tag">GitHub Actions</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-banner">
+    <h2>جاهز لرقمنة خط إنتاجك؟</h2>
+    <p>نموذج تطبيقي مكتمل على مجموعة Monobloc XJX — قابل للتوسع لباقي المجموعات</p>
+    <a href="https://github.com/xbitoi/nour-agent" class="btn btn-primary">⬡ نسخ المشروع من GitHub</a>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>
+      صُنع بشغف بواسطة <a href="https://github.com/xbitoi">xbitoi</a> ·
+      <strong style="color:var(--primary)">Yazaki AI Table Reader</strong> ·
+      يحوّل الفوضى البصرية إلى تنظيم رقمي
+    </p>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,847 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Nour WhatsApp Agent API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: whatsapp
+    description: WhatsApp connection management
+  - name: contacts
+    description: Contact management
+  - name: messages
+    description: Message management
+  - name: settings
+    description: Application settings
+  - name: stats
+    description: Dashboard statistics
+  - name: Storage
+    description: Object storage upload and serving endpoints.
+  - name: logs
+    description: System activity logs
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /whatsapp/status:
+    get:
+      operationId: getWhatsappStatus
+      tags: [whatsapp]
+      summary: Get WhatsApp connection status
+      responses:
+        "200":
+          description: Status info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsappStatus"
+
+  /whatsapp/qr:
+    get:
+      operationId: getWhatsappQr
+      tags: [whatsapp]
+      summary: Get QR code for WhatsApp connection
+      responses:
+        "200":
+          description: QR code data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsappQr"
+
+  /whatsapp/disconnect:
+    post:
+      operationId: disconnectWhatsapp
+      tags: [whatsapp]
+      summary: Disconnect WhatsApp session
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /whatsapp/request-pairing-code:
+    post:
+      operationId: requestWhatsappPairingCode
+      tags: [whatsapp]
+      summary: Connect WhatsApp using phone number pairing code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WhatsappPairingBody"
+      responses:
+        "200":
+          description: Pairing code generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsappPairingResponse"
+
+  /whatsapp/clear-qr:
+    post:
+      operationId: clearWhatsappQr
+      tags: [whatsapp]
+      summary: Clear the current QR code and reset connection
+      responses:
+        "200":
+          description: QR cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /contacts:
+    get:
+      operationId: getContacts
+      tags: [contacts]
+      summary: List all contacts
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Contacts list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactsListResponse"
+
+  /contacts/{id}:
+    get:
+      operationId: getContact
+      tags: [contacts]
+      summary: Get contact with message history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Contact detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactDetail"
+
+  /contacts/{id}/block:
+    post:
+      operationId: toggleBlockContact
+      tags: [contacts]
+      summary: Block or unblock a contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlockContactBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /messages:
+    get:
+      operationId: getMessages
+      tags: [messages]
+      summary: List all messages
+      parameters:
+        - name: contactId
+          in: query
+          schema:
+            type: integer
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [inbound, outbound]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Messages list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesListResponse"
+
+    delete:
+      operationId: clearMessages
+      tags: [messages]
+      summary: Delete all messages (optionally for one contact)
+      parameters:
+        - name: contactId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClearDataResponse"
+
+  /contacts/clear:
+    delete:
+      operationId: clearContacts
+      tags: [contacts]
+      summary: Delete all contacts and their messages
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClearDataResponse"
+
+  /messages/send:
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a message to a contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageBody"
+      responses:
+        "200":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /messages/broadcast:
+    post:
+      operationId: broadcastMessage
+      tags: [messages]
+      summary: Broadcast a message to all contacts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BroadcastMessageBody"
+      responses:
+        "200":
+          description: Broadcast sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BroadcastResult"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get all settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    post:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Settings"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  /settings/models/gemini:
+    get:
+      operationId: getGeminiModels
+      tags: [settings]
+      summary: Fetch available Gemini models for a given API key
+      parameters:
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of available models
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiModelsResponse"
+        "400":
+          description: Invalid or missing key
+
+  /settings/models/groq:
+    get:
+      operationId: getGroqModels
+      tags: [settings]
+      summary: Fetch available Groq models for a given API key
+      parameters:
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of available models
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiModelsResponse"
+        "400":
+          description: Invalid or missing key
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [stats]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stats"
+
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve an object entity
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /stats/activity:
+    get:
+      operationId: getActivity
+      tags: [stats]
+      summary: Get message activity for chart (last 7 days)
+      responses:
+        "200":
+          description: Activity data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityPoint"
+
+  /logs:
+    get:
+      operationId: getSystemLogs
+      tags: [logs]
+      summary: Get system activity logs
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: level
+          schema:
+            type: string
+      responses:
+        "200":
+          description: System logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemLogsResponse"
+
+    delete:
+      operationId: clearSystemLogs
+      tags: [logs]
+      summary: Clear all system logs
+      responses:
+        "200":
+          description: Logs cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClearDataResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    WhatsappStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        phone:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [connected, disconnected, connecting, qr_ready, pairing_ready]
+        pairingCode:
+          type: string
+          nullable: true
+      required: [connected, status]
+
+    WhatsappQr:
+      type: object
+      properties:
+        qr:
+          type: string
+          nullable: true
+        status:
+          type: string
+      required: [status]
+
+    WhatsappPairingBody:
+      type: object
+      properties:
+        phone:
+          type: string
+      required: [phone]
+
+    WhatsappPairingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        pairingCode:
+          type: string
+          nullable: true
+        message:
+          type: string
+      required: [success]
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required: [success]
+
+    Contact:
+      type: object
+      properties:
+        id:
+          type: integer
+        phone:
+          type: string
+        name:
+          type: string
+          nullable: true
+        firstSeen:
+          type: string
+        lastSeen:
+          type: string
+        messageCount:
+          type: integer
+        isBlocked:
+          type: boolean
+        lastMessage:
+          type: string
+          nullable: true
+      required: [id, phone, firstSeen, lastSeen, messageCount, isBlocked]
+
+    ContactsListResponse:
+      type: object
+      properties:
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Contact"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required: [contacts, total, page, totalPages]
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        contactId:
+          type: integer
+        contactPhone:
+          type: string
+        contactName:
+          type: string
+          nullable: true
+        content:
+          type: string
+        direction:
+          type: string
+          enum: [inbound, outbound]
+        aiModel:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+      required: [id, contactId, contactPhone, content, direction, timestamp]
+
+    MessagesListResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required: [messages, total, page, totalPages]
+
+    ContactDetail:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/Contact"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+      required: [contact, messages]
+
+    SendMessageBody:
+      type: object
+      properties:
+        phone:
+          type: string
+        content:
+          type: string
+      required: [phone, content]
+
+    BroadcastMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required: [content]
+
+    BroadcastResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        sent:
+          type: integer
+        failed:
+          type: integer
+      required: [success, sent, failed]
+
+    BlockContactBody:
+      type: object
+      properties:
+        blocked:
+          type: boolean
+      required: [blocked]
+
+    AiModelOption:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+      required: [id, name, description]
+
+    AiModelsResponse:
+      type: object
+      properties:
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiModelOption"
+      required: [models]
+
+    Settings:
+      type: object
+      properties:
+        ownerName:
+          type: string
+        ownerEmail:
+          type: string
+        ownerPhone:
+          type: string
+        adminPhone:
+          type: string
+        projectName:
+          type: string
+        projectDescription:
+          type: string
+        projectLink:
+          type: string
+        demoVideoUrl:
+          type: string
+        geminiApiKey:
+          type: string
+        geminiApiKey2:
+          type: string
+        geminiApiKey3:
+          type: string
+        geminiApiKey4:
+          type: string
+        geminiApiKey5:
+          type: string
+        geminiApiKey6:
+          type: string
+        geminiModel:
+          type: string
+        groqApiKey:
+          type: string
+        groqModel:
+          type: string
+        aiModel:
+          type: string
+          enum: [gemini, groq]
+        agentPersonality:
+          type: string
+        autoReply:
+          type: boolean
+        maintenanceMode:
+          type: boolean
+        maintenanceMessage:
+          type: string
+      required: [aiModel, autoReply]
+
+    Stats:
+      type: object
+      properties:
+        totalContacts:
+          type: integer
+        totalMessages:
+          type: integer
+        messagesSent:
+          type: integer
+        messagesReceived:
+          type: integer
+        blockedContacts:
+          type: integer
+        todayMessages:
+          type: integer
+        activeContacts:
+          type: integer
+      required: [totalContacts, totalMessages, messagesSent, messagesReceived, blockedContacts, todayMessages, activeContacts]
+
+    ActivityPoint:
+      type: object
+      properties:
+        date:
+          type: string
+        inbound:
+          type: integer
+        outbound:
+          type: integer
+      required: [date, inbound, outbound]
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    SystemLog:
+      type: object
+      required: [id, level, category, event, message, timestamp]
+      properties:
+        id:
+          type: integer
+        level:
+          type: string
+          enum: [info, warn, error, success]
+        category:
+          type: string
+          enum: [whatsapp, ai, system]
+        event:
+          type: string
+        message:
+          type: string
+        details:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    SystemLogsResponse:
+      type: object
+      required: [logs, total]
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/SystemLog"
+        total:
+          type: integer
+
+    ClearDataResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        deleted:
+          type: integer
+        message:
+          type: string
+      required: [success, deleted, message]

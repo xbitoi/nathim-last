@@ -1,0 +1,19 @@
+uploads = []
+
+[[generated]]
+id = "U0TeOaMwIbvuJoGXOzhID"
+uri = "file://artifacts/nour-dashboard/public/images/messy-papers.png"
+type = "image"
+title = "messy factory paper tables"
+
+[[generated]]
+id = "JNE2cMczswN2rAbEeozSR"
+uri = "file://artifacts/nour-dashboard/public/images/digital-data.png"
+type = "image"
+title = "digital data interface modern"
+
+[[outputs]]
+id = "Ep9m8iN54KDIXBBiyNloy"
+uri = "file://system-prompts.txt"
+type = "text"
+title = "ناظم — System Prompts"
