@@ -18,6 +18,15 @@ const objectStorageService = new ObjectStorageService();
  * Then uploads the file directly to the returned presigned URL.
  */
 router.post("/uploads/request-url", async (req: Request, res: Response) => {
+  // Object storage requires Replit's internal sidecar — not available outside Replit
+  if (!process.env.REPL_ID) {
+    res.status(503).json({
+      error: "رفع الملفات غير متاح في هذه البيئة — استخدم رابطاً مباشراً للفيديو بدلاً من الرفع",
+      code: "STORAGE_UNAVAILABLE",
+    });
+    return;
+  }
+
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });

@@ -73,7 +73,13 @@ function VideoUploader({ value, onChange }: { value: string; onChange: (url: str
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
       });
-      if (!metaRes.ok) throw new Error("فشل في الحصول على رابط الرفع");
+      if (!metaRes.ok) {
+        const errData = await metaRes.json().catch(() => ({}));
+        if (errData.code === "STORAGE_UNAVAILABLE") {
+          throw new Error("رفع الملفات غير متاح هنا — الصق رابط الفيديو مباشرةً في حقل الرابط أدناه");
+        }
+        throw new Error("فشل في الحصول على رابط الرفع");
+      }
       const { uploadURL, objectPath } = await metaRes.json();
       setProgress(30);
 
