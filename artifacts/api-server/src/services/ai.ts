@@ -355,14 +355,14 @@ _${activeSlogan}_
 }
 
 // Gemini fallback model chain — ordered by capability (best first)
-// Updated 2026-04-08: removed gemini-3.1-flash-lite-preview (timeout), gemini-2.5-flash-preview-04-17 (404)
+// Updated 2026-04-09: removed fake models (gemini-3.x don't exist), use real API model names
 const GEMINI_MODELS = [
-  "gemini-3.1-pro-preview",         // Pro 3.1 Preview — latest & most capable
-  "gemini-3-pro-preview",           // Pro 3.0 Preview — strong fallback
+  "gemini-2.5-pro-preview-03-25",   // Pro 2.5 Preview — latest capable
   "gemini-2.5-pro",                 // Pro 2.5 — established pro model
   "gemini-2.5-flash",               // Flash 2.5 — fast & stable
   "gemini-2.0-flash",               // Flash 2.0 — reliable fallback
   "gemini-2.0-flash-lite",          // Flash 2.0 Lite — lightest fallback
+  "gemini-1.5-pro",                 // Pro 1.5 — stable last resort
 ];
 
 // Groq fallback model chain — ordered by quota size
@@ -607,9 +607,9 @@ export async function generateAIReply(
         errors.push(`${label}/${model}: skipped (cooling down)`);
         continue;
       }
+      const logLabel = `${label}/${model}`;
       try {
         let reply: string;
-        const logLabel = `${label}/${model}`;
         if (provider === "gemini") {
           reply = await withTimeout(
             tryGemini(apiKey, model, systemPrompt, userMessage, conversationHistory),

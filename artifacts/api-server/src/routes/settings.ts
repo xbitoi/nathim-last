@@ -160,22 +160,22 @@ router.post("/", async (req, res) => {
 // --- Gemini model fetching — live list from Google API ---
 // Friendly display names for known models
 const GEMINI_NAMES: Record<string, { name: string; description: string }> = {
-  "gemini-3.1-pro-preview":   { name: "Gemini 3.1 Pro Preview",   description: "الأحدث والأقوى" },
-  "gemini-3-pro-preview":     { name: "Gemini 3 Pro Preview",      description: "Pro جيل 3" },
-  "gemini-3-flash-preview":   { name: "Gemini 3 Flash Preview",    description: "Flash جيل 3 — سريع" },
+  "gemini-2.5-pro-preview-03-25": { name: "Gemini 2.5 Pro Preview", description: "الأحدث والأقوى" },
   "gemini-2.5-pro":           { name: "Gemini 2.5 Pro",            description: "Pro متوازن وقوي" },
   "gemini-2.5-flash":         { name: "Gemini 2.5 Flash",          description: "Flash سريع ومستقر" },
   "gemini-2.0-flash":         { name: "Gemini 2.0 Flash",          description: "Flash 2.0 — رصيد عالٍ" },
   "gemini-2.0-flash-lite":    { name: "Gemini 2.0 Flash Lite",     description: "الأخف — رصيد مجاني أعلى" },
   "gemini-2.0-flash-001":     { name: "Gemini 2.0 Flash 001",      description: "Flash 2.0 نسخة مستقرة" },
+  "gemini-1.5-pro":           { name: "Gemini 1.5 Pro",            description: "Pro 1.5 — مستقر ومضمون" },
+  "gemini-1.5-flash":         { name: "Gemini 1.5 Flash",          description: "Flash 1.5 — خفيف وسريع" },
   "gemini-flash-latest":      { name: "Gemini Flash Latest",        description: "آخر إصدار Flash" },
 };
 
 // Priority order for sorting
 const GEMINI_PRIORITY = [
-  "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview",
-  "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-001",
-  "gemini-2.0-flash-lite", "gemini-flash-latest",
+  "gemini-2.5-pro-preview-03-25", "gemini-2.5-pro", "gemini-2.5-flash",
+  "gemini-2.0-flash", "gemini-2.0-flash-001", "gemini-2.0-flash-lite",
+  "gemini-1.5-pro", "gemini-1.5-flash", "gemini-flash-latest",
 ];
 
 router.get("/models/gemini", async (req, res) => {
