@@ -90,25 +90,31 @@ async function saveMessage(contactId: number, content: string, direction: "inbou
 async function sendDemoVideo(sock: any, jid: string, videoUrl: string): Promise<void> {
   const CAPTION = "🎥 فيديو توضيحي — Yazaki AI Table Reader";
 
-  // ① Try fetching via localhost to avoid the external proxy (faster, no TLS issues)
-  const localUrl = videoUrl.replace(
-    /^https?:\/\/[^/]+/,
-    `http://localhost:${process.env.PORT ?? 8080}`,
-  );
+  // Build URL list: only try local replacement for internal/self-hosted URLs
+  const selfHosts = ["localhost", "127.0.0.1", process.env.REPL_SLUG, "replit.app", "hf.space"].filter(Boolean);
+  const isInternalUrl = selfHosts.some(h => videoUrl.includes(h!));
+  const localUrl = isInternalUrl
+    ? videoUrl.replace(/^https?:\/\/[^/]+/, `http://localhost:${process.env.PORT ?? 8080}`)
+    : null;
 
-  for (const url of [localUrl, videoUrl]) {
+  const urlsToTry = localUrl ? [localUrl, videoUrl] : [videoUrl];
+
+  for (const url of urlsToTry) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
       if (!res.ok) continue;
+      const contentType = res.headers.get("content-type") ?? "";
       const buf = Buffer.from(await res.arrayBuffer());
-      if (buf.length < 100) continue; // sanity check — not an error page
+      // Reject if clearly not a video (HTML page, tiny file, etc.)
+      if (buf.length < 1000) continue;
+      if (contentType.includes("text/html")) continue;
       await sock.sendMessage(jid, { video: buf, mimetype: "video/mp4", caption: CAPTION });
       logger.info({ url, bytes: buf.length }, "Demo video sent as buffer");
       return;
     } catch { /* try next */ }
   }
 
-  // ② Fallback: let Baileys download it directly
+  // Fallback: let Baileys/WhatsApp servers download it directly from the URL
   logger.warn({ videoUrl }, "Buffer fetch failed — Baileys will download directly");
   await sock.sendMessage(jid, { video: { url: videoUrl }, mimetype: "video/mp4", caption: CAPTION });
 }
