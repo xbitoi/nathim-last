@@ -491,14 +491,19 @@ export default function Settings() {
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Video className="h-4 w-4" />
-                    فيديو شرح التطبيق
+                    رابط فيديو الشرح
                     <span className="text-muted-foreground text-xs font-normal">(اختياري)</span>
                   </FormLabel>
                   <FormControl>
-                    <VideoUploader value={field.value ?? ""} onChange={field.onChange} />
+                    <Input
+                      type="url"
+                      placeholder="https://files.catbox.moe/abc123.mp4"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
                   </FormControl>
                   <FormDescription className="text-xs">
-                    ارفع فيديو من جهازك — ناظم سيقترحه ويرسله لمن يطلبه في واتساب
+                    الصق رابطاً مباشراً لملف MP4 (مثلاً من catbox.moe) — ناظم سيرسله كفيديو واتساب لمن يطلبه صراحةً
                   </FormDescription>
                   <FormMessage/>
                 </FormItem>
