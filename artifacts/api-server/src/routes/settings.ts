@@ -162,10 +162,12 @@ router.post("/", async (req, res) => {
 const GEMINI_NAMES: Record<string, { name: string; description: string }> = {
   "gemini-2.5-flash": { name: "Gemini 2.5 Flash", description: "الأساسي — سريع ومستقر" },
   "gemini-2.0-flash": { name: "Gemini 2.0 Flash", description: "الاحتياطي — رصيد عالٍ" },
+  "gemini-1.5-pro":   { name: "Gemini 1.5 Pro",   description: "احتياطي أخير — موثوق" },
+  "gemini-1.5-flash": { name: "Gemini 1.5 Flash",  description: "الأخف احتياطياً" },
 };
 
 // Priority order for sorting
-const GEMINI_PRIORITY = ["gemini-2.5-flash", "gemini-2.0-flash"];
+const GEMINI_PRIORITY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"];
 
 router.get("/models/gemini", async (req, res) => {
   const key = req.query.key as string;

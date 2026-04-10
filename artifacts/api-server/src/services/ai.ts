@@ -32,6 +32,34 @@ async function getSetting(key: string): Promise<string | null> {
 const failedModels = new Map<string, number>();
 const CIRCUIT_BREAKER_MS = 3 * 60 * 1000;
 
+// ── Key stats — track requests/errors per provider label ────────────────────
+interface KeyStat {
+  requests: number;
+  quotaErrors: number;
+  lastSuccess: number | null;
+  lastError: number | null;
+}
+const keyStats = new Map<string, KeyStat>();
+
+function getOrCreateKeyStat(label: string): KeyStat {
+  if (!keyStats.has(label)) keyStats.set(label, { requests: 0, quotaErrors: 0, lastSuccess: null, lastError: null });
+  return keyStats.get(label)!;
+}
+
+export function getKeyStats(): Record<string, KeyStat & { coolingModels: string[] }> {
+  const result: Record<string, KeyStat & { coolingModels: string[] }> = {};
+  for (const [label, stat] of keyStats.entries()) {
+    const coolingModels: string[] = [];
+    for (const [key, failedAt] of failedModels.entries()) {
+      if (key.startsWith(`${label}/`) && Date.now() - failedAt < CIRCUIT_BREAKER_MS) {
+        coolingModels.push(key.slice(label.length + 1));
+      }
+    }
+    result[label] = { ...stat, coolingModels };
+  }
+  return result;
+}
+
 // ── Sticky provider — remember last successful key+model, start from there ──
 let _stickyLabel: string | null = null;
 let _stickyModel: string | null = null;
@@ -39,6 +67,9 @@ let _stickyModel: string | null = null;
 function markProviderSuccess(label: string, model: string) {
   _stickyLabel = label;
   _stickyModel = model;
+  const stat = getOrCreateKeyStat(label);
+  stat.requests++;
+  stat.lastSuccess = Date.now();
 }
 
 function isModelCoolingDown(provider: string, model: string): boolean {
@@ -52,6 +83,9 @@ function isModelCoolingDown(provider: string, model: string): boolean {
 
 function markModelFailed(provider: string, model: string) {
   failedModels.set(`${provider}/${model}`, Date.now());
+  const stat = getOrCreateKeyStat(provider);
+  stat.quotaErrors++;
+  stat.lastError = Date.now();
 }
 
 // ── Per-call timeout ─────────────────────────────────────────────────────────
@@ -355,10 +389,12 @@ _${activeSlogan}_
 `.trim();
 }
 
-// Gemini model chain — 2 models only, rotate keys between them
+// Gemini model chain — ordered best first, 1.5 as last resort fallbacks
 const GEMINI_MODELS = [
   "gemini-2.5-flash",   // Flash 2.5 — الأساسي
   "gemini-2.0-flash",   // Flash 2.0 — الاحتياطي
+  "gemini-1.5-pro",     // Pro 1.5  — احتياطي أخير
+  "gemini-1.5-flash",   // Flash 1.5 — الأخف احتياطياً
 ];
 
 // Groq fallback model chain — ordered by quota size

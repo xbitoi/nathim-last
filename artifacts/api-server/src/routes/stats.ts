@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, contactsTable, messagesTable } from "@workspace/db";
 import { eq, gte, count, sql } from "drizzle-orm";
+import { getKeyStats } from "../services/ai";
 
 const router = Router();
 
@@ -74,6 +75,10 @@ router.get("/activity", async (req, res) => {
     });
   }
   res.json(days);
+});
+
+router.get("/keys", (_req, res) => {
+  res.json(getKeyStats());
 });
 
 export default router;

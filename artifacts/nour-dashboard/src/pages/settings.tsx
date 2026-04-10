@@ -392,6 +392,15 @@ export default function Settings() {
   const geminiModel  = form.watch("geminiModel") ?? "";
   const groqModel    = form.watch("groqModel") ?? "";
 
+  // ── Key stats (live refresh every 30s) ───────────────────────────────────
+  const [keyStats, setKeyStats] = useState<Record<string, { requests: number; quotaErrors: number; lastSuccess: number | null; lastError: number | null; coolingModels: string[] }>>({});
+  useEffect(() => {
+    const fetchKeyStats = () => fetch("/api/stats/keys").then(r => r.json()).then(setKeyStats).catch(() => {});
+    fetchKeyStats();
+    const id = setInterval(fetchKeyStats, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   if (isLoading) {
     return <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
@@ -620,6 +629,41 @@ export default function Settings() {
                   <ModelSelector provider="gemini" apiKey={geminiApiKey} value={geminiModel} onChange={(v) => form.setValue("geminiModel", v, { shouldDirty: true })} />
                   {geminiModel && <p className="text-xs text-muted-foreground mt-1">Selected: <span className="font-mono text-foreground">{geminiModel}</span></p>}
                 </div>
+
+                {/* Key Stats */}
+                {Object.keys(keyStats).length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-xs font-medium text-muted-foreground">حالة المفاتيح (تتحدث كل 30 ث)</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["gemini_1","gemini_2","gemini_3","gemini_4","gemini_5","gemini_6"] as const).map((label, i) => {
+                        const s = keyStats[label];
+                        if (!s) return null;
+                        const isCooling = s.coolingModels.length > 0;
+                        const status = isCooling ? "تبريد" : s.requests > 0 ? "يعمل" : "جاهز";
+                        const color = isCooling ? "text-orange-400" : s.requests > 0 ? "text-green-400" : "text-muted-foreground";
+                        const dot = isCooling ? "bg-orange-400 animate-pulse" : s.requests > 0 ? "bg-green-400" : "bg-zinc-500";
+                        return (
+                          <div key={label} className="rounded-md border border-border/40 bg-muted/30 p-2 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-mono text-foreground">مفتاح {i + 1}</span>
+                              <div className="flex items-center gap-1">
+                                <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+                                <span className={`text-xs ${color}`}>{status}</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>✅ {s.requests} طلب</span>
+                              <span>⚠️ {s.quotaErrors} خطأ</span>
+                            </div>
+                            {isCooling && (
+                              <p className="text-xs text-orange-400/80 truncate">⏳ {s.coolingModels.join(", ")}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Groq */}
