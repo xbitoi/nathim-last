@@ -89,7 +89,7 @@ function markModelFailed(provider: string, model: string) {
 }
 
 // ── Per-call timeout ─────────────────────────────────────────────────────────
-const AI_TIMEOUT_MS = 6_000;
+const AI_TIMEOUT_MS = 15_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
@@ -439,12 +439,12 @@ ${agentPersonality}
 `.trim();
 }
 
-// Gemini model chain — ordered best first, 1.5 as last resort fallbacks
+// Gemini model chain — ordered best first
 const GEMINI_MODELS = [
-  "gemini-2.5-flash",   // Flash 2.5 — الأساسي
-  "gemini-2.0-flash",   // Flash 2.0 — الاحتياطي
-  "gemini-1.5-pro",     // Pro 1.5  — احتياطي أخير
-  "gemini-1.5-flash",   // Flash 1.5 — الأخف احتياطياً
+  "gemini-2.5-pro-preview-05-06",     // Pro 2.5 Preview — الأقوى
+  "gemini-2.5-flash-preview-04-17",   // Flash 2.5 Preview — سريع ومتقدم
+  "gemini-2.5-flash",                 // Flash 2.5 — الأساسي
+  "gemini-2.0-flash",                 // Flash 2.0 — الاحتياطي
 ];
 
 // Groq fallback model chain — ordered by quota size

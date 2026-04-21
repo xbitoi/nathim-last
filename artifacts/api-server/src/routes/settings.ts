@@ -174,14 +174,23 @@ router.post("/", async (req, res) => {
 // --- Gemini model fetching — live list from Google API ---
 // Friendly display names for known models
 const GEMINI_NAMES: Record<string, { name: string; description: string }> = {
-  "gemini-2.5-flash": { name: "Gemini 2.5 Flash", description: "الأساسي — سريع ومستقر" },
-  "gemini-2.0-flash": { name: "Gemini 2.0 Flash", description: "الاحتياطي — رصيد عالٍ" },
-  "gemini-1.5-pro":   { name: "Gemini 1.5 Pro",   description: "احتياطي أخير — موثوق" },
-  "gemini-1.5-flash": { name: "Gemini 1.5 Flash",  description: "الأخف احتياطياً" },
+  "gemini-2.5-pro-preview-05-06":   { name: "Gemini 2.5 Pro",          description: "الأقوى — تفكير متقدم" },
+  "gemini-2.5-pro-exp-03-25":       { name: "Gemini 2.5 Pro Exp",       description: "تجريبي مجاني — قوي جداً" },
+  "gemini-2.5-flash-preview-04-17": { name: "Gemini 2.5 Flash Preview", description: "سريع ومتقدم — أحدث فلاش" },
+  "gemini-2.5-flash":               { name: "Gemini 2.5 Flash",         description: "الأساسي — سريع ومستقر" },
+  "gemini-2.0-flash":               { name: "Gemini 2.0 Flash",         description: "الاحتياطي — رصيد عالٍ" },
+  "gemini-2.0-flash-exp":           { name: "Gemini 2.0 Flash Exp",     description: "تجريبي مجاني — 2.0" },
 };
 
-// Priority order for sorting
-const GEMINI_PRIORITY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"];
+// Priority order for sorting (newest/best first)
+const GEMINI_PRIORITY = [
+  "gemini-2.5-pro-preview-05-06",
+  "gemini-2.5-pro-exp-03-25",
+  "gemini-2.5-flash-preview-04-17",
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-exp",
+];
 
 router.get("/models/gemini", async (req, res) => {
   const key = req.query.key as string;
@@ -197,7 +206,15 @@ router.get("/models/gemini", async (req, res) => {
     const allModels = (data.models ?? [])
       .filter(m => m.supportedGenerationMethods?.includes("generateContent"))
       .map(m => m.name.replace("models/", ""))
-      .filter(id => id.startsWith("gemini") && !id.includes("tts") && !id.includes("image") && !id.includes("computer-use") && !id.includes("robotics") && !id.includes("customtools"));
+      .filter(id =>
+        id.startsWith("gemini") &&
+        !id.startsWith("gemini-1.") &&   // حذف 1.5 نهائياً
+        !id.includes("tts") &&
+        !id.includes("image") &&
+        !id.includes("computer-use") &&
+        !id.includes("robotics") &&
+        !id.includes("customtools")
+      );
 
     // Sort: known priority models first, then alphabetically
     allModels.sort((a, b) => {
