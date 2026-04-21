@@ -27,6 +27,8 @@ export default function Whatsapp() {
   const [phoneInput, setPhoneInput] = useState("");
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [pairingPending, setPairingPending] = useState(false);
+  const [qrStarting, setQrStarting] = useState(false);
+  const [qrStartAttempted, setQrStartAttempted] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const isConnected = status?.connected;
@@ -57,11 +59,40 @@ export default function Whatsapp() {
     }
   }, [status?.pairingCode, isConnected]);
 
+  const startQrConnection = async () => {
+    if (qrStarting || isConnected) return;
+    setQrStarting(true);
+    setQrStartAttempted(true);
+    try {
+      const response = await fetch("/api/whatsapp/connect", {
+        method: "POST",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("connect failed");
+      await Promise.all([refetchStatus(), refetchQr()]);
+    } catch {
+      toast({
+        title: "❌ فشل بدء الربط",
+        description: "لم نستطع بدء توليد QR. حاول مرة أخرى.",
+        variant: "destructive",
+      });
+    } finally {
+      setQrStarting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (status?.status === "disconnected" && !qrData?.qr && !qrStarting && !qrStartAttempted) {
+      startQrConnection();
+    }
+  }, [status?.status, qrData?.qr, qrStarting, qrStartAttempted]);
+
   const handleDisconnect = () => {
     disconnectMutation.mutate(undefined, {
       onSuccess: () => {
         toast({ title: "✅ تم قطع الاتصال", description: "تم إنهاء جلسة واتساب." });
         setPairingCode(null);
+        setQrStartAttempted(false);
         refetchStatus();
       },
       onError: () => {
@@ -74,6 +105,9 @@ export default function Whatsapp() {
     clearQrMutation.mutate(undefined, {
       onSuccess: () => {
         toast({ title: "🔄 تم المسح", description: "تم مسح الكود وإعادة التوليد." });
+        setPairingCode(null);
+        setPairingPending(false);
+        setQrStartAttempted(false);
         refetchStatus();
         refetchQr();
       },
@@ -93,6 +127,7 @@ export default function Whatsapp() {
       { data: { phone: clean } },
       {
         onSuccess: (data) => {
+          setQrStarting(false);
           if (data.pairingCode) {
             // Code came back immediately (rare)
             setPairingCode(data.pairingCode);
@@ -227,6 +262,14 @@ export default function Whatsapp() {
                     <div className="flex flex-col items-center text-muted-foreground gap-4">
                       <Loader2 className="h-8 w-8 animate-spin" />
                       <p className="text-sm">جارٍ توليد رمز QR...</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={startQrConnection}
+                        disabled={qrStarting}
+                      >
+                        {qrStarting ? "جارٍ البدء..." : "إعادة بدء توليد QR"}
+                      </Button>
                     </div>
                   )}
                 </div>
