@@ -231,6 +231,50 @@ function ModelSelector({ provider, apiKey, value, onChange }: {
   );
 }
 
+function KeyTestButton({ provider, apiKey }: { provider: "gemini" | "groq"; apiKey: string }) {
+  const [status, setStatus] = useState<FetchStatus>("idle");
+  const [message, setMessage] = useState("");
+
+  const test = useCallback(async () => {
+    if (!apiKey.trim()) {
+      setStatus("error");
+      setMessage("المفتاح فارغ");
+      return;
+    }
+    setStatus("loading"); setMessage("");
+    try {
+      const res = await fetch(`/api/settings/models/${provider}?key=${encodeURIComponent(apiKey)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "فشل الفحص");
+      const count = (data.models ?? []).length;
+      setStatus("success");
+      setMessage(count > 0 ? `صالح — ${count} موديل` : "صالح");
+    } catch (e: any) {
+      setStatus("error");
+      setMessage(e?.message ?? "غير صالح");
+    }
+  }, [apiKey, provider]);
+
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <Button type="button" variant="outline" size="sm" onClick={test} disabled={status === "loading"} className="h-7 text-xs gap-1.5">
+        {status === "loading" ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+        فحص
+      </Button>
+      {status === "success" && (
+        <Badge variant="outline" className="text-green-400 border-green-400/30 text-xs gap-1">
+          <CheckCircle2 className="h-3 w-3" />{message}
+        </Badge>
+      )}
+      {status === "error" && (
+        <Badge variant="outline" className="text-red-400 border-red-400/30 text-xs gap-1">
+          <AlertCircle className="h-3 w-3" />{message}
+        </Badge>
+      )}
+    </div>
+  );
+}
+
 function SaveStatusBadge({ status }: { status: SaveStatus }) {
   if (status === "idle") return null;
   return (
@@ -619,6 +663,7 @@ export default function Settings() {
                           </button>
                         </div>
                       </FormControl>
+                      <KeyTestButton provider="gemini" apiKey={field.value ?? ""} />
                       <FormMessage/>
                     </FormItem>
                   )} />
@@ -684,6 +729,7 @@ export default function Settings() {
                         </button>
                       </div>
                     </FormControl>
+                    <KeyTestButton provider="groq" apiKey={field.value ?? ""} />
                     <FormMessage/>
                   </FormItem>
                 )} />
