@@ -555,14 +555,22 @@ export default function Whatsapp() {
         </Card>
       )}
 
-      {!isConnected && lastError && (
-        <Alert variant="destructive" className="bg-destructive/5 border-destructive/30">
+      {!isConnected && (
+        <Alert className="bg-muted/30 border-border/50">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>آخر خطأ في الاتصال</AlertTitle>
-          <AlertDescription className="mt-1 space-y-1">
-            <p className="text-xs font-mono break-all" dir="ltr">{lastError}</p>
-            {sessionDir && (
-              <p className="text-[10px] opacity-70" dir="ltr">SESSION_DIR: {sessionDir}</p>
+          <AlertTitle>تشخيص الاتصال</AlertTitle>
+          <AlertDescription className="mt-2 space-y-1 text-xs font-mono" dir="ltr">
+            <p>status: <span className="font-bold text-foreground">{status?.status ?? "—"}</span></p>
+            <p>connected: <span className="font-bold text-foreground">{String(!!status?.connected)}</span></p>
+            <p>has QR: <span className="font-bold text-foreground">{String(!!qrData?.qr)}</span></p>
+            <p>has pairingCode: <span className="font-bold text-foreground">{String(!!status?.pairingCode)}</span></p>
+            <p>hasSavedSession: <span className="font-bold text-foreground">{String(hasSavedSession)}</span></p>
+            {savedPhone && <p>savedPhone: <span className="font-bold text-foreground">+{savedPhone}</span></p>}
+            {sessionDir && <p>sessionDir: <span className="text-foreground">{sessionDir}</span></p>}
+            {lastError && (
+              <p className="text-destructive mt-2 break-all">
+                lastError: <span className="font-bold">{lastError}</span>
+              </p>
             )}
           </AlertDescription>
         </Alert>
