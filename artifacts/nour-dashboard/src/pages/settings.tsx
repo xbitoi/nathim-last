@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, RefreshCw, CheckCircle2, AlertCircle, Trash2, MessageSquareOff, UsersRound, Save, CloudUpload, Cloud, CloudOff, RotateCcw, Upload, Video, X } from "lucide-react";
+import { Loader2, Eye, EyeOff, RefreshCw, CheckCircle2, AlertCircle, Trash2, MessageSquareOff, UsersRound, Save, CloudUpload, Cloud, CloudOff, RotateCcw, Upload, Video, X, CalendarClock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -433,6 +433,19 @@ export default function Settings() {
       onSuccess: (data) => { toast({ title: "✅ تم مسح البيانات", description: data.message }); queryClient.invalidateQueries(); },
       onError: () => toast({ title: "خطأ", description: "فشل مسح البيانات", variant: "destructive" }),
     },
+  });
+
+  const purgeOldMutation = useMutation({
+    mutationFn: async (days: number) => {
+      const res = await fetch(`/api/messages/old?days=${days}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Purge failed");
+      return res.json() as Promise<{ deleted: number; logsDeleted: number; days: number; message: string }>;
+    },
+    onSuccess: (data) => {
+      toast({ title: "✅ تم الحذف التلقائي", description: data.message });
+      queryClient.invalidateQueries();
+    },
+    onError: () => toast({ title: "خطأ", description: "فشل حذف البيانات القديمة", variant: "destructive" }),
   });
 
   const resetMutation = useMutation({
@@ -933,6 +946,40 @@ export default function Settings() {
                   <AlertDialogCancel>إلغاء</AlertDialogCancel>
                   <AlertDialogAction onClick={() => clearContactsMutation.mutate({})} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                     {clearContactsMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}مسح الكل
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+
+          {/* Auto-purge old data */}
+          <div className="border border-amber-500/40 rounded-lg p-4 bg-amber-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                <CalendarClock className="h-4 w-4" />حذف البيانات الأقدم من 3 أيام
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                يحذف الرسائل وسجلات النظام التي مضى عليها أكثر من 3 أيام. يعمل تلقائياً كل ساعة، ويمكنك تشغيله الآن يدوياً.
+              </p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 shrink-0 border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10" disabled={purgeOldMutation.isPending}>
+                  {purgeOldMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarClock className="h-4 w-4" />}
+                  حذف الآن
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>تأكيد حذف البيانات القديمة</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    سيتم حذف كل الرسائل وسجلات النظام الأقدم من 3 أيام. هذا الإجراء لا يمكن التراجع عنه.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => purgeOldMutation.mutate(3)} className="bg-amber-600 text-white hover:bg-amber-700">
+                    {purgeOldMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}نعم، احذف القديم
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

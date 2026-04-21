@@ -744,6 +744,9 @@ export async function connectWhatsApp(pairingPhone?: string) {
     if (fs.existsSync(SESSION_DIR)) {
       fs.rmSync(SESSION_DIR, { recursive: true, force: true });
     }
+    // Also wipe DB-backed session backup so a stale session doesn't get
+    // restored under our feet when the new pairing flow starts.
+    await clearSessionBackup().catch(() => {});
   }
 
   if (state.status === "connected" || state.status === "connecting") return;

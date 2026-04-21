@@ -3,6 +3,7 @@ import { db, contactsTable, messagesTable } from "@workspace/db";
 import { eq, desc, count, sql } from "drizzle-orm";
 import { SendMessageBody, BroadcastMessageBody, GetMessagesQueryParams } from "@workspace/api-zod";
 import { sendWhatsAppMessage } from "../services/whatsapp";
+import { purgeOldData, RETENTION_DAYS } from "../services/dataRetention";
 
 const router = Router();
 
@@ -76,6 +77,26 @@ router.post("/broadcast", async (req, res) => {
   }
 
   res.json({ success: true, sent, failed });
+});
+
+// DELETE /messages/old?days=3 — purge messages and system logs older than N days
+router.delete("/old", async (req, res) => {
+  const days = req.query.days ? Math.max(1, Number(req.query.days)) : RETENTION_DAYS;
+  if (Number.isNaN(days)) {
+    return res.status(400).json({ error: "Invalid days parameter" });
+  }
+  try {
+    const { messages, logs } = await purgeOldData(days);
+    res.json({
+      success: true,
+      deleted: messages,
+      logsDeleted: logs,
+      days,
+      message: `تم حذف ${messages} رسالة و ${logs} سجل أقدم من ${days} ${days === 1 ? "يوم" : "أيام"}.`,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Purge failed", detail: String(err) });
+  }
 });
 
 // DELETE /messages — clear all messages or messages for a specific contact

@@ -6,6 +6,7 @@ import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { connectWhatsApp } from "./services/whatsapp";
+import { startDataRetentionJob } from "./services/dataRetention";
 
 const app: Express = express();
 
@@ -64,5 +65,8 @@ if (process.env.NODE_ENV !== "development") {
 } else {
   logger.info("Development mode — WhatsApp auto-connect disabled to avoid conflicting with production session");
 }
+
+// Start the auto-purge job (deletes messages + logs older than 3 days).
+startDataRetentionJob();
 
 export default app;
