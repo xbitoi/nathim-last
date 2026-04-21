@@ -77,6 +77,21 @@ export async function restoreSessionIfMissing(sessionDir: string): Promise<boole
   }
 }
 
+export async function hasSessionBackup(): Promise<boolean> {
+  try {
+    const rows = await db
+      .select()
+      .from(settingsTable)
+      .where(eq(settingsTable.key, BACKUP_KEY))
+      .limit(1);
+    if (rows.length === 0 || !rows[0].value) return false;
+    const data = JSON.parse(rows[0].value) as Record<string, string>;
+    return typeof data["creds.json"] === "string" && data["creds.json"].length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function clearSessionBackup(): Promise<void> {
   try {
     await db.delete(settingsTable).where(eq(settingsTable.key, BACKUP_KEY));

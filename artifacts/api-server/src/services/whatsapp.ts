@@ -2,7 +2,7 @@ import { logger } from "../lib/logger";
 import { db, contactsTable, messagesTable, settingsTable } from "@workspace/db";
 import { eq, sql, desc } from "drizzle-orm";
 import { generateAIReply, generateAdminReply, getAllSettings } from "./ai";
-import { backupSession, restoreSessionIfMissing, clearSessionBackup } from "./whatsappSession";
+import { backupSession, restoreSessionIfMissing, clearSessionBackup, hasSessionBackup } from "./whatsappSession";
 import { logEvent } from "./logs";
 import fs from "fs";
 import path from "path";
@@ -732,21 +732,39 @@ function scheduleReconnect() {
 }
 
 export async function connectWhatsApp(pairingPhone?: string) {
-  // Allow re-entry if requesting pairing code while in QR mode — kill existing socket first
-  if (pairingPhone && (state.status === "connecting" || state.status === "qr_ready")) {
-    if (state.client) {
-      state.client.end(undefined);
-      state.client = null;
+  // Smart pairing:
+  // If the user is asking to pair with the SAME phone we already have a session
+  // for, we don't wipe anything — we just (re)connect using the saved session.
+  // Only wipe if the requested phone is different (true re-pair) or no session
+  // exists yet.
+  if (pairingPhone) {
+    const savedPhone = await getSetting("wa_paired_phone");
+    const hasBackup = await hasSessionBackup();
+    const samePhone = savedPhone && savedPhone === pairingPhone;
+    const wipeNeeded = !samePhone || !hasBackup;
+
+    if (state.status === "connecting" || state.status === "qr_ready") {
+      if (state.client) {
+        state.client.end(undefined);
+        state.client = null;
+      }
+      state.status = "disconnected";
+      state.qr = null;
+      state.pairingCode = null;
     }
-    state.status = "disconnected";
-    state.qr = null;
-    state.pairingCode = null;
-    if (fs.existsSync(SESSION_DIR)) {
-      fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+
+    if (wipeNeeded) {
+      if (fs.existsSync(SESSION_DIR)) {
+        fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+      }
+      // Different phone OR no backup — wipe DB backup too so the new pairing
+      // can start cleanly.
+      await clearSessionBackup().catch(() => {});
+    } else {
+      // Same phone with valid backup — silent reconnect, no pairing code needed.
+      logger.info({ phone: pairingPhone }, "Same phone re-pair requested — using saved session");
+      pairingPhone = undefined;
     }
-    // Also wipe DB-backed session backup so a stale session doesn't get
-    // restored under our feet when the new pairing flow starts.
-    await clearSessionBackup().catch(() => {});
   }
 
   if (state.status === "connected" || state.status === "connecting") return;
@@ -820,6 +838,12 @@ export async function connectWhatsApp(pairingPhone?: string) {
         const user = sock.user;
         state.phone = user?.id?.split(":")[0] ?? null;
         state.name = user?.name ?? null;
+        // Persist the bound phone so the dashboard can show "remembered number"
+        // and the next startup knows which session belongs here.
+        if (state.phone) {
+          upsertSetting("wa_paired_phone", state.phone).catch(() => {});
+          if (state.name) upsertSetting("wa_paired_name", state.name).catch(() => {});
+        }
         logger.info({ phone: state.phone, offlineMs }, "WhatsApp connected");
         logEvent("success", "whatsapp", "wa_connected", `اتصل واتساب — ${state.phone ?? ""}`, { phone: state.phone, name: state.name, offlineMs });
         startHeartbeat(sock);
@@ -1377,6 +1401,43 @@ export function getWhatsAppStatus() {
     status: state.status,
     pairingCode: state.pairingCode,
   };
+}
+
+/**
+ * Returns the persisted "remembered" phone number (and name) the system
+ * will auto-reconnect with on every startup, even if currently disconnected.
+ */
+export async function getSavedSession(): Promise<{ phone: string | null; name: string | null; hasBackup: boolean }> {
+  const [phone, name, hasBackup] = await Promise.all([
+    getSetting("wa_paired_phone"),
+    getSetting("wa_paired_name"),
+    hasSessionBackup(),
+  ]);
+  return { phone, name, hasBackup };
+}
+
+/**
+ * Hard wipe of the WhatsApp session (local files + DB backup + saved phone).
+ * Use only when the user explicitly wants to re-pair from scratch.
+ */
+export async function forceWipeSession(): Promise<void> {
+  if (state.client) {
+    state.client.end(undefined);
+    state.client = null;
+  }
+  state.status = "disconnected";
+  state.qr = null;
+  state.pairingCode = null;
+  state.phone = null;
+  state.name = null;
+  if (fs.existsSync(SESSION_DIR)) {
+    fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+  }
+  await clearSessionBackup().catch(() => {});
+  await db.delete(settingsTable).where(eq(settingsTable.key, "wa_paired_phone")).catch(() => {});
+  await db.delete(settingsTable).where(eq(settingsTable.key, "wa_paired_name")).catch(() => {});
+  _settingsCache.delete("wa_paired_phone");
+  _settingsCache.delete("wa_paired_name");
 }
 
 export function getWhatsAppQr() {

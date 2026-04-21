@@ -11,7 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, QrCode, LogOut, CheckCircle2, AlertCircle, Loader2, Trash2, KeyRound, Copy, Check } from "lucide-react";
+import { Phone, QrCode, LogOut, CheckCircle2, AlertCircle, Loader2, Trash2, KeyRound, Copy, Check, History } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
@@ -34,6 +35,34 @@ export default function Whatsapp() {
   const isConnected = status?.connected;
   const isPairingReady = status?.status === "pairing_ready";
   const isQrReady = !isConnected && qrData?.qr;
+  const savedPhone = (status as any)?.savedPhone as string | null | undefined;
+  const savedName = (status as any)?.savedName as string | null | undefined;
+  const hasSavedSession = !!(status as any)?.hasSavedSession;
+
+  const reconnectSaved = async () => {
+    try {
+      const r = await fetch("/api/whatsapp/connect", { method: "POST", cache: "no-store" });
+      if (!r.ok) throw new Error("connect failed");
+      toast({ title: "🔄 جارٍ إعادة الاتصال", description: "يستخدم الجلسة المحفوظة دون توليد كود." });
+      refetchStatus();
+      refetchQr();
+    } catch {
+      toast({ title: "❌ فشل", description: "تعذّر إعادة الاتصال.", variant: "destructive" });
+    }
+  };
+
+  const forceWipe = async () => {
+    try {
+      const r = await fetch("/api/whatsapp/force-wipe", { method: "POST" });
+      if (!r.ok) throw new Error("wipe failed");
+      toast({ title: "🗑️ تم مسح الجلسة المحفوظة", description: "يمكنك الآن الربط برقم جديد." });
+      setQrStartAttempted(false);
+      refetchStatus();
+      refetchQr();
+    } catch {
+      toast({ title: "❌ فشل", description: "تعذّر مسح الجلسة.", variant: "destructive" });
+    }
+  };
 
   // Poll while not connected — 1s when waiting for pairing code, 3s otherwise
   useEffect(() => {
@@ -219,6 +248,50 @@ export default function Whatsapp() {
               اختر طريقة الربط: مسح رمز QR، أو الربط برقم الهاتف مباشرة.
             </CardDescription>
           </CardHeader>
+          {hasSavedSession && savedPhone && (
+            <CardContent className="pt-0">
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-full bg-emerald-500/10 text-emerald-600">
+                    <History className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">جلسة محفوظة — لا حاجة لإعادة الربط</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      الرقم المحفوظ: <span className="font-mono" dir="ltr">+{savedPhone}</span>
+                      {savedName ? <> — {savedName}</> : null}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button size="sm" onClick={reconnectSaved} className="gap-2">
+                    <CheckCircle2 className="h-4 w-4" /> إعادة الاتصال الآن
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2 text-destructive border-destructive/40 hover:bg-destructive/10">
+                        <Trash2 className="h-4 w-4" /> مسح الجلسة
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>تأكيد مسح الجلسة المحفوظة</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          سيتم مسح بيانات الاعتماد والرقم المحفوظ نهائياً. ستحتاج لإعادة الربط بـ QR أو كود ربط جديد.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        <AlertDialogAction onClick={forceWipe} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          نعم، امسح
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </CardContent>
+          )}
           <CardContent>
             <Tabs defaultValue="qr" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">

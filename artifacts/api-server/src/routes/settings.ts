@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, settingsTable, messagesTable, contactsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, notInArray } from "drizzle-orm";
 import { UpdateSettingsBody } from "@workspace/api-zod";
 import { invalidateSettingsCache } from "../services/ai";
 import { clearAdminSessions, sendAdminMessage } from "../services/whatsapp";
@@ -255,12 +255,17 @@ router.post("/test/firebase", async (req, res) => {
 });
 
 // ─── Full system reset ────────────────────────────────────────────────────────
+// IMPORTANT: We deliberately PRESERVE the WhatsApp session (wa_session_backup,
+// wa_paired_phone, wa_paired_name) so the user does NOT have to scan a new QR
+// or re-pair after a reset. The session lives independently of app settings.
+const PRESERVE_KEYS = ["wa_session_backup", "wa_paired_phone", "wa_paired_name"];
+
 router.post("/reset", async (_req, res) => {
   try {
     // Order: messages first (FK → contacts), then contacts, then settings
     await db.delete(messagesTable);
     await db.delete(contactsTable);
-    await db.delete(settingsTable);
+    await db.delete(settingsTable).where(notInArray(settingsTable.key, PRESERVE_KEYS));
 
     // Clear in-memory admin session cache
     clearAdminSessions();

@@ -1,5 +1,13 @@
 import { Router } from "express";
-import { connectWhatsApp, disconnectWhatsApp, getWhatsAppQr, getWhatsAppStatus, clearWhatsAppQr } from "../services/whatsapp";
+import {
+  connectWhatsApp,
+  disconnectWhatsApp,
+  getWhatsAppQr,
+  getWhatsAppStatus,
+  clearWhatsAppQr,
+  getSavedSession,
+  forceWipeSession,
+} from "../services/whatsapp";
 
 const router = Router();
 
@@ -7,7 +15,16 @@ router.get("/status", async (req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.set("Pragma", "no-cache");
   res.set("Expires", "0");
-  res.json(getWhatsAppStatus());
+  const status = getWhatsAppStatus();
+  const saved = await getSavedSession();
+  res.json({ ...status, savedPhone: saved.phone, savedName: saved.name, hasSavedSession: saved.hasBackup });
+});
+
+router.post("/force-wipe", async (_req, res) => {
+  await forceWipeSession();
+  // Kick off a fresh connect so QR / pairing UI can appear immediately
+  connectWhatsApp().catch(() => {});
+  res.json({ success: true, message: "تم مسح الجلسة المحفوظة بالكامل — يمكنك الآن الربط برقم جديد" });
 });
 
 router.get("/qr", async (req, res) => {
