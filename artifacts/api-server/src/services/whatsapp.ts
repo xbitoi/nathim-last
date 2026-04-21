@@ -811,26 +811,29 @@ export async function connectWhatsApp(pairingPhone?: string) {
 
     const { state: authState, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
 
-    // fetchLatestBaileysVersion can hang on restricted networks (e.g. HuggingFace Spaces).
-    // Fall back to a known-stable version after 8 seconds.
-    const FALLBACK_VERSION: [number, number, number] = [2, 3000, 1023711];
+    // fetchLatestBaileysVersion fetches from GitHub raw content which can hang on
+    // restricted networks (e.g. HuggingFace Spaces).  Race it against a 10-second
+    // timeout; on timeout we fall back to the version baked into the Baileys package
+    // itself (same value Baileys uses internally when the network call fails).
+    const BAILEYS_BUILTIN_VERSION: [number, number, number] = [2, 3000, 1027934701];
     let version: [number, number, number];
     try {
       const result = await Promise.race([
         fetchLatestBaileysVersion(),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("version fetch timeout")), 8000)),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("version fetch timeout")), 10_000)),
       ]) as { version: [number, number, number] };
       version = result.version;
-      logger.info({ version }, "Baileys version fetched");
+      logger.info({ version }, "Baileys version fetched from GitHub");
     } catch {
-      version = FALLBACK_VERSION;
-      logger.warn({ version }, "Baileys version fetch timed out — using fallback version");
+      version = BAILEYS_BUILTIN_VERSION;
+      logger.warn({ version }, "Baileys version fetch timed out — using built-in package version");
     }
 
     const sock = makeWASocket({
       version,
       auth: authState,
       printQRInTerminal: false,
+      connectTimeoutMs: 35_000,
       logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({ level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({}) as any }) } as any,
     });
 
@@ -848,15 +851,28 @@ export async function connectWhatsApp(pairingPhone?: string) {
         if (pairingPhone) {
           // QR event = WS ready — call requestPairingCode NOW (Baileys requirement)
           try {
-            const rawCode = await sock.requestPairingCode(pairingPhone);
+            // Add a 20-second timeout — requestPairingCode can hang on slow networks
+            const rawCode = await Promise.race([
+              sock.requestPairingCode(pairingPhone),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("requestPairingCode timeout")), 20_000)
+              ),
+            ]) as string;
             const formattedCode = rawCode.match(/.{1,4}/g)?.join("-") ?? rawCode;
             state.pairingCode = formattedCode;
             state.status = "pairing_ready";
             logger.info({ phone: pairingPhone, code: formattedCode }, "Pairing code generated");
           } catch (err) {
-            logger.error({ err }, "Failed to request pairing code");
+            logger.error({ err }, "Failed to request pairing code — will retry fresh connect");
+            // Clean up the socket properly before resetting state
+            try { sock.end(undefined); } catch {}
             state.status = "disconnected";
             state.client = null;
+            state.qr = null;
+            state.pairingCode = null;
+            connectingStartedAt = null;
+            // Retry automatically after 3 seconds with the same phone number
+            setTimeout(() => connectWhatsApp(pairingPhone), 3000);
           }
         } else {
           const qrcode = await import("qrcode");
