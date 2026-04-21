@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, QrCode, LogOut, CheckCircle2, AlertCircle, Loader2, Trash2, KeyRound, Copy, Check, History } from "lucide-react";
+import { Phone, QrCode, LogOut, CheckCircle2, AlertCircle, Loader2, Trash2, KeyRound, Copy, Check, History, RefreshCw, ShieldAlert } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,6 +61,43 @@ export default function Whatsapp() {
       refetchQr();
     } catch {
       toast({ title: "❌ فشل", description: "تعذّر مسح الجلسة.", variant: "destructive" });
+    }
+  };
+
+  const [freshLoading, setFreshLoading] = useState(false);
+  const startFreshSession = async () => {
+    setFreshLoading(true);
+    try {
+      // 1) قطع الاتصال الحالي إن وُجد
+      await fetch("/api/whatsapp/disconnect", { method: "POST" }).catch(() => {});
+      // 2) مسح الجلسة المحفوظة في القاعدة + الملفات المحلية
+      const w = await fetch("/api/whatsapp/force-wipe", { method: "POST" });
+      if (!w.ok) throw new Error("wipe failed");
+      // 3) بدء اتصال جديد نظيف (سيُولّد QR/كود جديد)
+      setPairingCode(null);
+      setPairingPending(false);
+      setPhoneInput("");
+      setQrStartAttempted(false);
+      await refetchStatus();
+      await refetchQr();
+      // إعطاء لحظة قبل بدء الاتصال الجديد ليُمسح كل شيء
+      setTimeout(async () => {
+        await fetch("/api/whatsapp/connect", { method: "POST", cache: "no-store" }).catch(() => {});
+        refetchStatus();
+        refetchQr();
+      }, 600);
+      toast({
+        title: "🆕 تم بدء جلسة جديدة",
+        description: "تم تنظيف كل شيء — سيظهر كود/QR جديد خلال ثوانٍ.",
+      });
+    } catch {
+      toast({
+        title: "❌ فشل بدء جلسة جديدة",
+        description: "تعذّر تنفيذ العملية. حاول مرة أخرى.",
+        variant: "destructive",
+      });
+    } finally {
+      setFreshLoading(false);
     }
   };
 
@@ -450,6 +487,68 @@ export default function Whatsapp() {
                 </div>
               </TabsContent>
             </Tabs>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isConnected && (
+        <Card className="bg-gradient-to-br from-amber-500/5 via-card/50 to-orange-500/5 backdrop-blur border-amber-500/20 overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-amber-500/60" />
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-500">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base">تعذّر استرجاع الجلسة القديمة؟</CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  اضغط الزر التالي لقطع كل المحاولات وبدء جلسة جديدة نظيفة تماماً.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="rounded-lg bg-muted/30 border border-border/50 p-3 mb-4 text-xs text-muted-foreground leading-relaxed">
+              <p>
+                <span className="font-semibold text-foreground">ماذا يفعل هذا الزر؟</span> يقطع أي اتصال جارٍ، يمسح كل بيانات الجلسة المحفوظة (المحلية والقاعدة)، ثم يبدأ اتصالاً جديداً سيُنتج <span className="font-semibold">QR أو كود ربط جديد خلال ثوانٍ</span>.
+              </p>
+              <p className="mt-2 text-amber-700 dark:text-amber-500/90">
+                ⚠️ استخدمه فقط عند تعطّل الجلسة الحالية أو عند الرغبة في الربط برقم مختلف.
+              </p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="default"
+                  className="w-full gap-2 bg-amber-600 hover:bg-amber-700 text-white shadow-md"
+                  disabled={freshLoading}
+                  data-testid="button-fresh-session"
+                >
+                  {freshLoading ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> جارٍ التنفيذ...</>
+                  ) : (
+                    <><RefreshCw className="h-4 w-4" /> قطع الاتصال وبدء جلسة جديدة نظيفة</>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>تأكيد بدء جلسة جديدة</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    سيتم مسح بيانات الاعتماد المحفوظة وقطع أي محاولة اتصال جارية، ثم بدء عملية ربط جديدة من الصفر. هل أنت متأكد؟
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={startFreshSession}
+                    className="bg-amber-600 text-white hover:bg-amber-700"
+                  >
+                    نعم، ابدأ جلسة جديدة
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       )}
