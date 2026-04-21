@@ -6,6 +6,7 @@ import {
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
+import { isFirebaseConfigured, getFirebaseUploadUrl, streamFirebaseObject } from "../lib/firebaseStorage";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -18,24 +19,40 @@ const objectStorageService = new ObjectStorageService();
  * Then uploads the file directly to the returned presigned URL.
  */
 router.post("/uploads/request-url", async (req: Request, res: Response) => {
-  // Object storage requires Replit's internal sidecar — not available outside Replit
-  if (!process.env.REPL_ID) {
-    res.status(503).json({
-      error: "رفع الملفات غير متاح في هذه البيئة — استخدم رابطاً مباشراً للفيديو بدلاً من الرفع",
-      code: "STORAGE_UNAVAILABLE",
-    });
-    return;
-  }
-
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
     return;
   }
+  const { name, size, contentType } = parsed.data;
+
+  // Prefer Firebase if configured (works anywhere)
+  try {
+    if (await isFirebaseConfigured()) {
+      const { uploadURL, objectPath } = await getFirebaseUploadUrl(contentType);
+      res.json(
+        RequestUploadUrlResponse.parse({
+          uploadURL,
+          objectPath,
+          metadata: { name, size, contentType },
+        }),
+      );
+      return;
+    }
+  } catch (err) {
+    req.log.error({ err }, "Firebase upload URL failed, falling back");
+  }
+
+  // Fallback: Replit object storage (only works inside Replit)
+  if (!process.env.REPL_ID) {
+    res.status(503).json({
+      error: "رفع الملفات غير متاح — قم بإعداد Firebase في الإعدادات أو استخدم رابطاً مباشراً للفيديو",
+      code: "STORAGE_UNAVAILABLE",
+    });
+    return;
+  }
 
   try {
-    const { name, size, contentType } = parsed.data;
-
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
@@ -98,6 +115,21 @@ router.get("/objects/*path", async (req: Request, res: Response) => {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
+
+    // Try Firebase first if configured
+    if (await isFirebaseConfigured()) {
+      const fb = await streamFirebaseObject(objectPath);
+      if (fb) {
+        res.status(fb.status);
+        for (const [k, v] of Object.entries(fb.headers)) res.setHeader(k, v);
+        fb.stream.pipe(res);
+        return;
+      }
+      // If Firebase configured but file missing, return 404 immediately
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
+
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 
     // --- Protected route example (uncomment when using replit-auth) ---

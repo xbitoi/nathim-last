@@ -157,6 +157,10 @@ export interface Settings {
   autoReply: boolean;
   maintenanceMode?: boolean;
   maintenanceMessage?: string;
+  firebaseProjectId?: string;
+  firebaseClientEmail?: string;
+  firebasePrivateKey?: string;
+  firebaseBucket?: string;
 }
 
 export interface Stats {

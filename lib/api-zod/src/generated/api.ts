@@ -251,6 +251,10 @@ export const GetSettingsResponse = zod.object({
   autoReply: zod.boolean(),
   maintenanceMode: zod.boolean().optional(),
   maintenanceMessage: zod.string().optional(),
+  firebaseProjectId: zod.string().optional(),
+  firebaseClientEmail: zod.string().optional(),
+  firebasePrivateKey: zod.string().optional(),
+  firebaseBucket: zod.string().optional(),
 });
 
 /**
@@ -279,6 +283,10 @@ export const UpdateSettingsBody = zod.object({
   autoReply: zod.boolean(),
   maintenanceMode: zod.boolean().optional(),
   maintenanceMessage: zod.string().optional(),
+  firebaseProjectId: zod.string().optional(),
+  firebaseClientEmail: zod.string().optional(),
+  firebasePrivateKey: zod.string().optional(),
+  firebaseBucket: zod.string().optional(),
 });
 
 export const UpdateSettingsResponse = zod.object({
@@ -304,6 +312,10 @@ export const UpdateSettingsResponse = zod.object({
   autoReply: zod.boolean(),
   maintenanceMode: zod.boolean().optional(),
   maintenanceMessage: zod.string().optional(),
+  firebaseProjectId: zod.string().optional(),
+  firebaseClientEmail: zod.string().optional(),
+  firebasePrivateKey: zod.string().optional(),
+  firebaseBucket: zod.string().optional(),
 });
 
 /**

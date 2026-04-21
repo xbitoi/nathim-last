@@ -18,6 +18,10 @@ import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const settingsSchema = z.object({
+  firebaseProjectId: z.string().optional(),
+  firebaseClientEmail: z.string().optional(),
+  firebasePrivateKey: z.string().optional(),
+  firebaseBucket: z.string().optional(),
   ownerName: z.string().optional(),
   ownerEmail: z.union([z.string().email("Invalid email"), z.literal("")]).optional(),
   ownerPhone: z.string().optional(),
@@ -275,6 +279,117 @@ function KeyTestButton({ provider, apiKey }: { provider: "gemini" | "groq"; apiK
   );
 }
 
+function FirebaseStorageCard({ form }: { form: any }) {
+  const [showKey, setShowKey] = useState(false);
+  const [status, setStatus] = useState<FetchStatus>("idle");
+  const [message, setMessage] = useState("");
+
+  const test = useCallback(async () => {
+    const v = form.getValues();
+    const projectId = (v.firebaseProjectId ?? "").trim();
+    const clientEmail = (v.firebaseClientEmail ?? "").trim();
+    const privateKey = (v.firebasePrivateKey ?? "").trim();
+    const bucket = (v.firebaseBucket ?? "").trim();
+    if (!projectId || !clientEmail || !privateKey || !bucket) {
+      setStatus("error"); setMessage("املأ كل حقول Firebase أولاً");
+      return;
+    }
+    setStatus("loading"); setMessage("");
+    try {
+      const res = await fetch("/api/settings/test/firebase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, clientEmail, privateKey, bucket }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data?.error ?? "فشل الاتصال");
+      setStatus("success"); setMessage("متصل ✓ Bucket صالح");
+    } catch (e: any) {
+      setStatus("error"); setMessage(e?.message ?? "غير صالح");
+    }
+  }, [form]);
+
+  return (
+    <Card className="bg-card/50 backdrop-blur border-border/50">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-amber-400" />
+          <CardTitle>Firebase Storage (Google)</CardTitle>
+        </div>
+        <CardDescription>
+          خزّن ملفات الواتساب على Firebase Cloud Storage — يعمل في أي بيئة (Hugging Face / Railway / غيرها).
+          اذهب إلى Firebase Console → Project Settings → Service Accounts → Generate new private key.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-5">
+        <div className="grid gap-5 md:grid-cols-2">
+          <FormField control={form.control} name="firebaseProjectId" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs">Project ID</FormLabel>
+              <FormControl><Input placeholder="my-project-12345" className="font-mono text-sm" {...field} value={field.value ?? ""} /></FormControl>
+              <FormMessage/>
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="firebaseBucket" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs">Storage Bucket</FormLabel>
+              <FormControl><Input placeholder="my-project-12345.appspot.com" className="font-mono text-sm" {...field} value={field.value ?? ""} /></FormControl>
+              <FormMessage/>
+            </FormItem>
+          )} />
+        </div>
+        <FormField control={form.control} name="firebaseClientEmail" render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs">Client Email</FormLabel>
+            <FormControl><Input placeholder="firebase-adminsdk-xxx@my-project.iam.gserviceaccount.com" className="font-mono text-sm" {...field} value={field.value ?? ""} /></FormControl>
+            <FormMessage/>
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="firebasePrivateKey" render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs">Private Key</FormLabel>
+            <FormControl>
+              <div className="relative">
+                <Textarea
+                  rows={showKey ? 8 : 3}
+                  placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
+                  className="font-mono text-xs pr-10"
+                  style={showKey ? {} : { WebkitTextSecurity: "disc" } as any}
+                  {...field}
+                  value={field.value ?? ""}
+                />
+                <button type="button" onClick={() => setShowKey(!showKey)} className="absolute right-3 top-3 text-muted-foreground hover:text-foreground">
+                  {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </FormControl>
+            <FormDescription className="text-xs">
+              الصق المحتوى كاملاً من ملف JSON (بما فيه BEGIN/END). أسطر \n ستُحوّل تلقائياً.
+            </FormDescription>
+            <FormMessage/>
+          </FormItem>
+        )} />
+        <div className="flex items-center gap-2 pt-1">
+          <Button type="button" variant="outline" size="sm" onClick={test} disabled={status === "loading"} className="h-8 text-xs gap-1.5">
+            {status === "loading" ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            فحص الاتصال
+          </Button>
+          {status === "success" && (
+            <Badge variant="outline" className="text-green-400 border-green-400/30 text-xs gap-1">
+              <CheckCircle2 className="h-3 w-3" />{message}
+            </Badge>
+          )}
+          {status === "error" && (
+            <Badge variant="outline" className="text-red-400 border-red-400/30 text-xs gap-1">
+              <AlertCircle className="h-3 w-3" />{message}
+            </Badge>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function SaveStatusBadge({ status }: { status: SaveStatus }) {
   if (status === "idle") return null;
   return (
@@ -338,6 +453,7 @@ export default function Settings() {
         aiModel: "gemini", agentPersonality: "", autoReply: true,
         maintenanceMode: false,
         maintenanceMessage: "⚙️ النظام في وضع الصيانة حالياً. سيعود قريباً — We'll be back soon.",
+        firebaseProjectId: "", firebaseClientEmail: "", firebasePrivateKey: "", firebaseBucket: "",
       });
     },
     onError: () => toast({ title: "خطأ", description: "فشل في إعادة التعيين", variant: "destructive" }),
@@ -354,6 +470,7 @@ export default function Settings() {
       aiModel: "gemini", agentPersonality: "", autoReply: true,
       maintenanceMode: false,
       maintenanceMessage: "⚙️ النظام في وضع الصيانة حالياً. سيعود قريباً — We'll be back soon.",
+      firebaseProjectId: "", firebaseClientEmail: "", firebasePrivateKey: "", firebaseBucket: "",
     }
   });
 
@@ -383,6 +500,10 @@ export default function Settings() {
       agentPersonality: settings.agentPersonality || "",
       maintenanceMode: (settings as any).maintenanceMode ?? false,
       maintenanceMessage: (settings as any).maintenanceMessage || "⚙️ النظام في وضع الصيانة حالياً. سيعود قريباً — We'll be back soon.",
+      firebaseProjectId: (settings as any).firebaseProjectId || "",
+      firebaseClientEmail: (settings as any).firebaseClientEmail || "",
+      firebasePrivateKey: (settings as any).firebasePrivateKey || "",
+      firebaseBucket: (settings as any).firebaseBucket || "",
     });
     // Allow watch to fire after form is fully populated
     setTimeout(() => { isReadyRef.current = true; }, 300);
@@ -762,6 +883,8 @@ export default function Settings() {
             </CardFooter>
           </Card>
 
+          {/* Firebase Storage */}
+          <FirebaseStorageCard form={form} />
         </div>
       </Form>
 

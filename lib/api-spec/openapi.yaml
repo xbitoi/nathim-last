@@ -738,6 +738,14 @@ components:
           type: boolean
         maintenanceMessage:
           type: string
+        firebaseProjectId:
+          type: string
+        firebaseClientEmail:
+          type: string
+        firebasePrivateKey:
+          type: string
+        firebaseBucket:
+          type: string
       required: [aiModel, autoReply]
 
     Stats:

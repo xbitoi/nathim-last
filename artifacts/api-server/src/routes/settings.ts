@@ -4,11 +4,12 @@ import { eq } from "drizzle-orm";
 import { UpdateSettingsBody } from "@workspace/api-zod";
 import { invalidateSettingsCache } from "../services/ai";
 import { clearAdminSessions, sendAdminMessage } from "../services/whatsapp";
+import { invalidateFirebaseCache, testFirebaseConnection } from "../lib/firebaseStorage";
 
 const SENSITIVE_KEYS = new Set([
   "geminiApiKey", "geminiApiKey2", "geminiApiKey3",
   "geminiApiKey4", "geminiApiKey5", "geminiApiKey6",
-  "groqApiKey",
+  "groqApiKey", "firebasePrivateKey",
 ]);
 
 const KEY_LABELS: Record<string, string> = {
@@ -33,6 +34,10 @@ const KEY_LABELS: Record<string, string> = {
   autoReply: "الرد التلقائي",
   maintenanceMode: "وضع الصيانة",
   maintenanceMessage: "رسالة الصيانة",
+  firebaseProjectId: "Firebase Project ID",
+  firebaseClientEmail: "Firebase Client Email",
+  firebasePrivateKey: "Firebase Private Key",
+  firebaseBucket: "Firebase Bucket",
 };
 
 const router = Router();
@@ -70,6 +75,10 @@ function buildSettingsObject(raw: Record<string, string>) {
     autoReply: raw.autoReply !== "false",
     maintenanceMode: raw.maintenanceMode === "true",
     maintenanceMessage: raw.maintenanceMessage ?? "⚙️ النظام في وضع الصيانة حالياً. سيعود قريباً — We'll be back soon.",
+    firebaseProjectId: raw.firebaseProjectId ?? "",
+    firebaseClientEmail: raw.firebaseClientEmail ?? "",
+    firebasePrivateKey: raw.firebasePrivateKey ?? "",
+    firebaseBucket: raw.firebaseBucket ?? "",
   };
 }
 
@@ -109,6 +118,10 @@ router.post("/", async (req, res) => {
     { key: "autoReply", value: String(data.autoReply ?? true) },
     { key: "maintenanceMode", value: String(data.maintenanceMode ?? false) },
     { key: "maintenanceMessage", value: data.maintenanceMessage ?? "⚙️ النظام في وضع الصيانة حالياً. سيعود قريباً — We'll be back soon." },
+    { key: "firebaseProjectId", value: data.firebaseProjectId ?? "" },
+    { key: "firebaseClientEmail", value: data.firebaseClientEmail ?? "" },
+    { key: "firebasePrivateKey", value: data.firebasePrivateKey ?? "" },
+    { key: "firebaseBucket", value: data.firebaseBucket ?? "" },
   ];
 
   // adminPhone: only overwrite if a non-empty value is explicitly provided
@@ -125,6 +138,7 @@ router.post("/", async (req, res) => {
 
   // Invalidate the AI settings cache so next message uses fresh values
   invalidateSettingsCache();
+  invalidateFirebaseCache();
 
   // Build diff and notify admin via WhatsApp
   const changedLines: string[] = [];
@@ -228,6 +242,16 @@ router.get("/models/groq", async (req, res) => {
   }
 
   return res.json({ models: GROQ_SUPPORTED });
+});
+
+// ─── Firebase connection test ─────────────────────────────────────────────────
+router.post("/test/firebase", async (req, res) => {
+  const { projectId, clientEmail, privateKey, bucket } = req.body ?? {};
+  if (!projectId || !clientEmail || !privateKey || !bucket) {
+    return res.status(400).json({ ok: false, error: "كل الحقول مطلوبة" });
+  }
+  const result = await testFirebaseConnection({ projectId, clientEmail, privateKey, bucket });
+  return res.json(result);
 });
 
 // ─── Full system reset ────────────────────────────────────────────────────────
