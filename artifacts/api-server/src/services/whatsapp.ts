@@ -696,6 +696,7 @@ async function handleAdminCommand(text: string, phone: string): Promise<string> 
 let reconnectAttempts = 0;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let disconnectedAt: number | null = null; // timestamp of last disconnect
+let connectingStartedAt: number | null = null; // timestamp when "connecting" began
 
 // Logout storm detection — if kicked 3 times in 90s, stop auto-reconnecting
 let logoutTimestamps: number[] = [];
@@ -767,7 +768,24 @@ export async function connectWhatsApp(pairingPhone?: string) {
     }
   }
 
+  // Stuck-state recovery: if we've been "connecting" for more than 45s without
+  // emitting a QR/pairing code, the underlying socket is wedged. Kill it so we
+  // can start fresh — otherwise every retry from the dashboard returns early
+  // and the user sees a permanent "loading" state.
+  if (state.status === "connecting" && connectingStartedAt && Date.now() - connectingStartedAt > 45_000) {
+    logger.warn({ stuckMs: Date.now() - connectingStartedAt }, "Connect stuck — forcing reset");
+    if (state.client) {
+      try { state.client.end(undefined); } catch {}
+      state.client = null;
+    }
+    state.status = "disconnected";
+    state.qr = null;
+    state.pairingCode = null;
+    connectingStartedAt = null;
+  }
+
   if (state.status === "connected" || state.status === "connecting") return;
+  connectingStartedAt = Date.now();
 
   state.status = "connecting";
   state.qr = null;
@@ -835,6 +853,7 @@ export async function connectWhatsApp(pairingPhone?: string) {
         state.pairingCode = null;
         reconnectAttempts = 0;
         disconnectedAt = null;
+        connectingStartedAt = null;
         const user = sock.user;
         state.phone = user?.id?.split(":")[0] ?? null;
         state.name = user?.name ?? null;
@@ -858,6 +877,7 @@ export async function connectWhatsApp(pairingPhone?: string) {
         const wasLoggedOut = reason === DisconnectReason.loggedOut;
         const wasReplaced  = reason === DisconnectReason.connectionReplaced; // 440 — another session took over
         if (!disconnectedAt) disconnectedAt = Date.now(); // record first disconnect time
+        connectingStartedAt = null;
         state.status = "disconnected";
         state.phone = null;
         state.name = null;
