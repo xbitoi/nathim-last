@@ -16,8 +16,24 @@ router.get("/status", async (req, res) => {
   res.set("Pragma", "no-cache");
   res.set("Expires", "0");
   const status = getWhatsAppStatus();
-  const saved = await getSavedSession();
-  res.json({ ...status, savedPhone: saved.phone, savedName: saved.name, hasSavedSession: saved.hasBackup });
+  // Wrap DB call so a slow/failed DB doesn't 500/timeout the status endpoint —
+  // the dashboard relies on this poll every 3s and must always answer fast.
+  let saved = { phone: null as string | null, name: null as string | null, hasBackup: false };
+  try {
+    const result = await Promise.race([
+      getSavedSession(),
+      new Promise<typeof saved>((_, reject) => setTimeout(() => reject(new Error("db timeout")), 4000)),
+    ]);
+    saved = result as typeof saved;
+  } catch (err: any) {
+    req.log.warn({ err: err?.message }, "getSavedSession failed — returning status without saved session info");
+  }
+  res.json({
+    ...status,
+    savedPhone: saved.phone,
+    savedName: saved.name,
+    hasSavedSession: saved.hasBackup,
+  });
 });
 
 router.post("/force-wipe", async (_req, res) => {
