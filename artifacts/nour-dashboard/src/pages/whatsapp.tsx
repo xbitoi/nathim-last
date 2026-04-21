@@ -38,6 +38,8 @@ export default function Whatsapp() {
   const savedPhone = (status as any)?.savedPhone as string | null | undefined;
   const savedName = (status as any)?.savedName as string | null | undefined;
   const hasSavedSession = !!(status as any)?.hasSavedSession;
+  const lastError = (status as any)?.lastError as string | null | undefined;
+  const sessionDir = (status as any)?.sessionDir as string | undefined;
 
   const reconnectSaved = async () => {
     try {
@@ -551,6 +553,19 @@ export default function Whatsapp() {
             </AlertDialog>
           </CardContent>
         </Card>
+      )}
+
+      {!isConnected && lastError && (
+        <Alert variant="destructive" className="bg-destructive/5 border-destructive/30">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>آخر خطأ في الاتصال</AlertTitle>
+          <AlertDescription className="mt-1 space-y-1">
+            <p className="text-xs font-mono break-all" dir="ltr">{lastError}</p>
+            {sessionDir && (
+              <p className="text-[10px] opacity-70" dir="ltr">SESSION_DIR: {sessionDir}</p>
+            )}
+          </AlertDescription>
+        </Alert>
       )}
 
       <Alert className="bg-primary/5 border-primary/20 text-primary">

@@ -16,6 +16,8 @@ interface WAState {
   phone: string | null;
   name: string | null;
   client: any | null;
+  lastError?: string | null;
+  lastErrorAt?: number | null;
 }
 
 const state: WAState = {
@@ -25,6 +27,8 @@ const state: WAState = {
   phone: null,
   name: null,
   client: null,
+  lastError: null,
+  lastErrorAt: null,
 };
 
 const SESSION_DIR = process.env.WHATSAPP_SESSION_DIR ?? path.join(process.cwd(), ".whatsapp-session");
@@ -1365,10 +1369,13 @@ export async function connectWhatsApp(pairingPhone?: string) {
         })
       );
     });
-  } catch (err) {
+  } catch (err: any) {
     logger.error({ err }, "Failed to connect WhatsApp");
     state.status = "disconnected";
     state.client = null;
+    state.lastError = err?.message || String(err) || "unknown error";
+    state.lastErrorAt = Date.now();
+    connectingStartedAt = null;
   }
 }
 
@@ -1422,6 +1429,9 @@ export function getWhatsAppStatus() {
     name: state.name,
     status: state.status,
     pairingCode: state.pairingCode,
+    lastError: state.lastError ?? null,
+    lastErrorAt: state.lastErrorAt ?? null,
+    sessionDir: SESSION_DIR,
   };
 }
 
