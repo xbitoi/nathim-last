@@ -31,5 +31,6 @@ EXPOSE 7860
 
 ENV PORT=7860
 ENV NODE_ENV=production
+ENV WHATSAPP_SESSION_DIR=/tmp/.whatsapp-session
 
 CMD ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]

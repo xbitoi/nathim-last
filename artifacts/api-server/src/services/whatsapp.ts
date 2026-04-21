@@ -744,15 +744,17 @@ export async function connectWhatsApp(pairingPhone?: string) {
     const samePhone = savedPhone && savedPhone === pairingPhone;
     const wipeNeeded = !samePhone || !hasBackup;
 
-    if (state.status === "connecting" || state.status === "qr_ready") {
-      if (state.client) {
-        state.client.end(undefined);
-        state.client = null;
-      }
-      state.status = "disconnected";
-      state.qr = null;
-      state.pairingCode = null;
+    // Explicit user pairing request — ALWAYS tear down whatever's running, even
+    // if it's "connected" or freshly "connecting". The user typed a phone and
+    // clicked the button, so they want a guaranteed clean attempt.
+    if (state.client) {
+      try { state.client.end(undefined); } catch {}
+      state.client = null;
     }
+    state.status = "disconnected";
+    state.qr = null;
+    state.pairingCode = null;
+    connectingStartedAt = null;
 
     if (wipeNeeded) {
       if (fs.existsSync(SESSION_DIR)) {
