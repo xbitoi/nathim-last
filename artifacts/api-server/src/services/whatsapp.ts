@@ -810,7 +810,22 @@ export async function connectWhatsApp(pairingPhone?: string) {
     }
 
     const { state: authState, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
-    const { version } = await fetchLatestBaileysVersion();
+
+    // fetchLatestBaileysVersion can hang on restricted networks (e.g. HuggingFace Spaces).
+    // Fall back to a known-stable version after 8 seconds.
+    const FALLBACK_VERSION: [number, number, number] = [2, 3000, 1023711];
+    let version: [number, number, number];
+    try {
+      const result = await Promise.race([
+        fetchLatestBaileysVersion(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("version fetch timeout")), 8000)),
+      ]) as { version: [number, number, number] };
+      version = result.version;
+      logger.info({ version }, "Baileys version fetched");
+    } catch {
+      version = FALLBACK_VERSION;
+      logger.warn({ version }, "Baileys version fetch timed out — using fallback version");
+    }
 
     const sock = makeWASocket({
       version,
